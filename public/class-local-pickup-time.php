@@ -254,7 +254,7 @@ class Local_Pickup_Time {
 
 	/**
 	 * Create an array of times starting with an hour past the current time
-	 *
+	 * returns array($availableOptions[],$closedDateStrings[])
 	 * @since    1.0.0
 	 */
 	public function create_hour_options() {
@@ -279,21 +279,27 @@ class Local_Pickup_Time {
 		// Get delay, interval, and number of days ahead settings
 		$delay_minutes = get_option( 'local_pickup_delay_minutes', 60 );
 		$interval = get_option( 'local_pickup_hours_interval', 30 );
+		$delay_days = get_option( 'local_pickup_delay_days', 0 );
 		$num_days_allowed = get_option( 'local_pickup_days_ahead', 1 );
 
-		// Setup time variables for calculations
-		$delay_ahead_hour = date( 'H', strtotime( "+$delay_minutes minutes" ) );
-		$delay_ahead_minute = date( 'i', strtotime( "+$delay_minutes minutes" ) );
-		$double_delay_ahead_hour = date( 'H', strtotime( "+2 hours" ) );
-		$today_name = strtolower( date( 'l' ) );
-		$today_date = date( 'm/d/Y' );
+		//sanity check
+		$delay_days = $delay_days >= $num_days_allowed ? 0 : $delay_days;
+		//i can foresee a request to support "business days" instead of just $delay_minutes = $delay_days*24*60+$delay_minutes;
+		//If you're changing this make sure you finish implementing the rest of the business day logic kthx :)
+		$delay_days_business_days = false;
+
+
 
 		// Create an empty array for our dates
 		$pickup_options = array();
+		$current_time = time();
+
 
 		// Loop through all days ahead and add the pickup time options to the array
-		for ( $i = 0; $i < $num_days_allowed; $i++ ) {
+		//delay_days defaults to 0
+		for ( $i = $delay_days; $i < $num_days_allowed; $i++ ) {
 
+			$current_date_string = date( 'm/d/Y', strtotime("+$i days", $current_time));
 			// Get the date of current iteration
 			$current_day_name = date( 'l', strtotime( "+$i days" ) );
 			$current_day_name_lower = strtolower( $current_day_name );
@@ -301,44 +307,76 @@ class Local_Pickup_Time {
 			// Get the day's opening and closing times
 			$open_time = get_option( 'local_pickup_hours_' . $current_day_name_lower . '_start', '10:00' );
 			$close_time = get_option( 'local_pickup_hours_' . $current_day_name_lower . '_end', '19:00' );
+			$tEnd = strtotime( $close_time );
+
+			//it's a holiday, same day orders are possible and we're currently closed, or they're just straight up closed today.
+			if ( in_array( $current_date_string, $closing_days ) || ($i == 0 && $current_time >= $tEnd ) || ($open_time == $close_time && ($open_time == 0 || $open_time == ''))) {
+				// Set drop down text to let user know store is closed
+				if($i == 0) {
+					$reason = 'Pickup unavailable today';
+				} else if ($open_time == $close_time && ($open_time == 0 || $open_time == '')) {
+					$reason = 'Pickup unavailable on ' . $current_day_name . 's';
+				} else {
+					$reason = 'Pickup unavailable on ' . $current_day_name;
+				}
+				$pickup_options[] = array(''=>__($reason, $this->plugin_slug ));
+				continue;
+			}
+
+			//if $i isn't today, then we don't care about the next available opening time, just set it to opening time.
+			$start_time = $open_time;
 
 			// Setup start and end times for pickup options
-			$pickup_time_begin = ( $delay_ahead_minute < $interval ) ? $delay_ahead_hour . ":$interval" : $double_delay_ahead_hour . ":00";
-
-			$start_time = ( strtotime( $pickup_time_begin ) < strtotime( $open_time ) ) ? $open_time : $pickup_time_begin;
-
-			// Today
-			$tStart = strtotime( $start_time );
-			$tEnd = strtotime( $close_time );
-			$tNow = $tStart;
-			$current_time = time();
-
-			// If Closed today or today's pickup times are over, don't allow a pickup option
-			if ( in_array( $today_date, $closing_days ) || $current_time >= $tEnd  ) {
-				// Set drop down text to let user know store is closed
-				$pickup_options['closed_today'] = __( 'Closed today, please check back tomorrow!', $this->plugin_slug );
-
-				// Hide Order Review so user doesn't order anything today
-				remove_action( 'woocommerce_checkout_order_review', 'woocommerce_order_review', 10 );
-			}
-			else {
-				// Create array of time options to return to woocommerce_form_field
-				while ( $tNow <= $tEnd ) {
-
-					$day_name = ( $i === 0 ) ? 'Today' : $current_day_name;
-
-					$option_key = $current_day_name . date( "_h_i", $tNow );
-					$option_value = $day_name . ' ' . date( "g:i", $tNow );
-
-					$pickup_options[$option_key] = $option_value;
-
-					$tNow = strtotime( "+$interval minutes", $tNow );
+			if($delay_days_business_days && $delay_days > 0) {
+				//todo fancy rounding logic...not sure how this should be implemented. Do we do $tNow + $nextClosestStartTime + $delay_days?
+				//I think we need one more option for this to be fleshed out - orders received after hours are treated as received at the open of next business day? Maybe have a customizable time per day?,
+				//orders received during open hours are treated as if they were recieved at end of day? Or beginning of day? I think for this to work we'll need a better interface for setting up order hours.
+				//especially in places where orders are processed at night..they'd probably want to accept orders for the next business day up to midnight, even though the storefront closes at 6pm.
+				throw new Exception('Business Day Delays aren\'t implemented yet! How did you get here?');
+				$start_time = $open_time;
+			} else {
+				//not business days
+				if($i == 0) {
+					$now_plus_delay_seconds = time() + $delay;
+					$pickup_time_begin_seconds = ceil($now_plus_delay_seconds / ($interval * 60)) * ($interval * 60) + ($interval * 60);
+					//start_time is either the opening time or the next available pickup time
+					$start_time = ($pickup_time_begin_seconds < strtotime( $open_time ) ) ? $open_time : date('g:i',$pickup_time_begin_seconds);
 				}
 			}
 
+			// Today
+			$tNow = strtotime( $start_time );
+			// Create array of time options to return to woocommerce_form_field
+			while ( $tNow <= $tEnd ) {
+				$day_name = ( $i === 0 ) ? 'Today' : $current_day_name;
+				$option_key = $current_day_name . date( "_h_i e", $tNow );
+				$option_value = $day_name . ' ' . date( "g:i", $tNow );
+				$pickup_options[] = array($option_key=>$option_value);
+				$tNow = strtotime( "+$interval minutes", $tNow );
+			}
+
+
 		} // end for loop
 
-		return $pickup_options;
+		//if they're closed for all of the options, disable
+		$flattened_pickup_options = array();
+		$allClosed = true;
+		$closedDays = array();
+		foreach($pickup_options as $opt) {
+			list($key,$val) = each($opt);
+			if($key != ''){
+				$allClosed = false;
+				$flattened_pickup_options[$key] = $val;
+			} else {
+				$closedDays[] = $val;
+			}
+		}
+		if($allClosed) {
+			$flattened_pickup_options[''] = "No available pickup times";
+			// Hide Order Review so user doesn't order anything today
+			remove_action( 'woocommerce_checkout_order_review', 'woocommerce_order_review', 10 );
+		}
+		return array($flattened_pickup_options,$closedDays);
 	}
 
 	/**
@@ -348,16 +386,16 @@ class Local_Pickup_Time {
 	 */
 	public function time_select( $checkout ) {
 		echo '<div id="local-pickup-time-select"><h2>' . __( 'Pickup Time', $this->plugin_slug ) . '</h2>';
-
+		$hourOptions = self::create_hour_options();
 		woocommerce_form_field( 'local_pickup_time_select', array(
 			'type'          => 'select',
 			'class'         => array( 'local-pickup-time-select-field form-row-wide' ),
 			'label'         => __( 'Pickup Time', $this->plugin_slug ),
-			'options'		=> self::create_hour_options()
+			'options'		=>	$hourOptions[0]
 		), $checkout->get_value( 'local_pickup_time_select' ));
-
-		self::create_hour_options();
-
+		if(!empty($hourOptions[1])) {
+			echo '<p>' . join('<br />',$hourOptions[1]) . '</p>';
+		}
 		echo '</div>';
 	}
 
