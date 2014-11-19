@@ -229,6 +229,7 @@ class Local_Pickup_Time_Admin {
 				'type'     => 'textarea',
 				'desc_tip' =>  true,
 			),
+
 			array(
 				'title'     => __( 'Pickup Time Interval', $this->plugin_slug ),
 				'desc'     => __( 'Choose the time interval for allowing local pickup orders.', $this->plugin_slug ),
@@ -259,6 +260,7 @@ class Local_Pickup_Time_Admin {
 				'class'		=> 'chosen_select',
 				'desc_tip' =>  true,
 				'options' => array(
+					'0'      => __( 'No time delay', $this->plugin_slug ),
 					'5'      => __( '5 minutes', $this->plugin_slug ),
 					'10'      => __( '10 minutes', $this->plugin_slug ),
 					'15'      => __( '15 minutes', $this->plugin_slug ),
@@ -267,6 +269,28 @@ class Local_Pickup_Time_Admin {
 					'45'	  => __( '45 minutes', $this->plugin_slug ),
 					'60'	  => __( '1 hour', $this->plugin_slug ),
 					'120'	  => __( '2 hours', $this->plugin_slug ),
+					'180'	  => __( '3 hour', $this->plugin_slug ),
+					'240'	  => __( '4 hours', $this->plugin_slug ),
+				)
+			),
+			array(
+				'title'     => __( 'Pickup Time Delay Days', $this->plugin_slug ),
+				'desc'     => __( 'Choose the time delay in days from the time of ordering for allowing local pickup orders. ', $this->plugin_slug ),
+				'id'       => 'local_pickup_delay_days',
+				'css'      => 'width:100px;',
+				'default'  => '0',
+				'type'     => 'select',
+				'class'		=> 'chosen_select',
+				'desc_tip' =>  true,
+				'options' => array(
+					'0'      => __( 'Same Day', $this->plugin_slug ),
+					'1'      => __( 'Next Day', $this->plugin_slug ),
+					'2'      => __( '2 Days', $this->plugin_slug ),
+					'3'      => __( '3 Days', $this->plugin_slug ),
+					'4'      => __( '4 Days', $this->plugin_slug ),
+					'5'      => __( '5 Days', $this->plugin_slug ),
+					'6'      => __( '6 Days', $this->plugin_slug ),
+					'7'      => __( '7 Days', $this->plugin_slug ),
 				)
 			),
 			array(
@@ -284,7 +308,7 @@ class Local_Pickup_Time_Admin {
 					'3'      => __( '3 days', $this->plugin_slug ),
 					'4'      => __( '4 days', $this->plugin_slug ),
 					'5'	  	 => __( '5 days', $this->plugin_slug ),
-					'6'		 => __( '6 days', $this->plugin_slug ),
+					'6'			 => __( '6 days', $this->plugin_slug ),
 					'7'	  	 => __( '7 days', $this->plugin_slug ),
 					'8'	  	 => __( '8 days', $this->plugin_slug ),
 					'9'	  	 => __( '9 days', $this->plugin_slug ),
