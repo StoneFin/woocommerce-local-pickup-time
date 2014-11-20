@@ -249,6 +249,13 @@ class Local_Pickup_Time_Admin {
 					'60'	  => __( '1 hour', $this->plugin_slug ),
 					'120'	  => __( '2 hours', $this->plugin_slug ),
 				)
+			),array(
+				'title'     => __( 'Pickup Time ASAP text', $this->plugin_slug ),
+				'desc'     => __( 'Text to display for an asap option. Leave blank for no asap option.', $this->plugin_slug ),
+				'id'       => 'local_pickup_asap',
+				'default'  => 'As Soon As Possible',
+				'type'     => 'text',
+				'desc_tip' =>  true,
 			),
 			array(
 				'title'     => __( 'Pickup Time Delay', $this->plugin_slug ),

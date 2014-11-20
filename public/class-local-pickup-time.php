@@ -281,6 +281,10 @@ class Local_Pickup_Time {
 		$interval = get_option( 'local_pickup_hours_interval', 30 );
 		$delay_days = get_option( 'local_pickup_delay_days', 0 );
 		$num_days_allowed = get_option( 'local_pickup_days_ahead', 1 );
+		//todo another option - let the customer choose asap, like jimmyjohns.
+		$asap_text = get_option('local_pickup_asap',false);
+		if(trim($asap_text) == '')
+		  $asap_text = false;
 
 		//sanity check
 		$delay_days = $delay_days >= $num_days_allowed ? 0 : $delay_days;
@@ -292,6 +296,8 @@ class Local_Pickup_Time {
 
 		// Create an empty array for our dates
 		$pickup_options = array();
+		if($asap_text != false)
+			$pickup_options[] = array($asap_text=>$asap_text);
 		$current_time = time();
 
 
